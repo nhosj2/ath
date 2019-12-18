@@ -16,4 +16,4 @@ __attribute__((section(".gnu.linkonce.this_module"))) = {
 static const char __module_depends[]
 __used
 __attribute__((section(".modinfo"))) =
-"depends=compat,ath9k_hw,cfg80211,ath";
+"depends=compat,cfg80211,ath9k_hw,ath";

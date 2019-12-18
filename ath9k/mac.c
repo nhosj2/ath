@@ -535,7 +535,8 @@ int ath9k_hw_rxprocdesc(struct ath_hw *ah, struct ath_desc *ds,
 
 	rs->rs_status = 0;
 	rs->rs_flags = 0;
-	rs->flag = 0;
+	rs->enc_flags = 0;
+	rs->bw = RATE_INFO_BW_20;
 
 	rs->rs_datalen = ads.ds_rxstatus1 & AR_DataLen;
 	rs->rs_tstamp = ads.AR_RcvTimestamp;
@@ -577,15 +578,15 @@ int ath9k_hw_rxprocdesc(struct ath_hw *ah, struct ath_desc *ds,
 	rs->rs_antenna = MS(ads.ds_rxstatus3, AR_RxAntenna);
 
 	/* directly mapped flags for ieee80211_rx_status */
-	rs->flag |=
-		(ads.ds_rxstatus3 & AR_GI) ? RX_FLAG_SHORT_GI : 0;
-	rs->flag |=
-		(ads.ds_rxstatus3 & AR_2040) ? RX_FLAG_40MHZ : 0;
+	rs->enc_flags |=
+		(ads.ds_rxstatus3 & AR_GI) ? RX_ENC_FLAG_SHORT_GI : 0;
+	rs->bw = (ads.ds_rxstatus3 & AR_2040) ? RATE_INFO_BW_40 :
+						RATE_INFO_BW_20;
 	if (AR_SREV_9280_20_OR_LATER(ah))
-		rs->flag |=
+		rs->enc_flags |=
 			(ads.ds_rxstatus3 & AR_STBC) ?
 				/* we can only Nss=1 STBC */
-				(1 << RX_FLAG_STBC_SHIFT) : 0;
+				(1 << RX_ENC_FLAG_STBC_SHIFT) : 0;
 
 	if (ads.ds_rxstatus8 & AR_PreDelimCRCErr)
 		rs->rs_flags |= ATH9K_RX_DELIM_CRC_PRE;
@@ -684,8 +685,11 @@ EXPORT_SYMBOL(ath9k_hw_startpcureceive);
 
 void ath9k_hw_abortpcurecv(struct ath_hw *ah)
 {
-	REG_SET_BIT(ah, AR_DIAG_SW,
-		    AR_DIAG_RX_DIS | AR_DIAG_RX_ABORT | AR_DIAG_FORCE_RX_CLEAR);
+	u32 reg = AR_DIAG_RX_DIS | AR_DIAG_RX_ABORT;
+
+	if (!IS_ENABLED(CPTCFG_ATH9K_TX99))
+		reg |= AR_DIAG_FORCE_RX_CLEAR;
+	REG_SET_BIT(ah, AR_DIAG_SW, reg);
 
 	ath9k_hw_disable_mib_counters(ah);
 }
@@ -695,7 +699,7 @@ bool ath9k_hw_stopdmarecv(struct ath_hw *ah, bool *reset)
 {
 #define AH_RX_STOP_DMA_TIMEOUT 10000   /* usec */
 	struct ath_common *common = ath9k_hw_common(ah);
-	u32 mac_status = 0, last_mac_status = 0;
+	u32 mac_status, last_mac_status = 0;
 	int i;
 
 	/* Enable access to the DMA observation bus */
@@ -725,16 +729,6 @@ bool ath9k_hw_stopdmarecv(struct ath_hw *ah, bool *reset)
 	}
 
 	if (i == 0) {
-		if (!AR_SREV_9300_20_OR_LATER(ah) &&
-		    (mac_status & 0x700) == 0) {
-			/*
-			 * DMA is idle but the MAC is still stuck
-			 * processing events
-			 */
-			*reset = true;
-			return true;
-		}
-
 		ath_err(common,
 			"DMA failed to stop in %d ms AR_CR=0x%08x AR_DIAG_SW=0x%08x DMADBG_7=0x%08x\n",
 			AH_RX_STOP_DMA_TIMEOUT / 1000,
@@ -817,20 +811,11 @@ void ath9k_hw_disable_interrupts(struct ath_hw *ah)
 }
 EXPORT_SYMBOL(ath9k_hw_disable_interrupts);
 
-void ath9k_hw_enable_interrupts(struct ath_hw *ah)
+static void __ath9k_hw_enable_interrupts(struct ath_hw *ah)
 {
 	struct ath_common *common = ath9k_hw_common(ah);
 	u32 sync_default = AR_INTR_SYNC_DEFAULT;
 	u32 async_mask;
-
-	if (!(ah->imask & ATH9K_INT_GLOBAL))
-		return;
-
-	if (!atomic_inc_and_test(&ah->intr_ref_cnt)) {
-		ath_dbg(common, INTERRUPT, "Do not enable IER ref count %d\n",
-			atomic_read(&ah->intr_ref_cnt));
-		return;
-	}
 
 	if (AR_SREV_9340(ah) || AR_SREV_9550(ah) || AR_SREV_9531(ah) ||
 	    AR_SREV_9561(ah))
@@ -852,6 +837,39 @@ void ath9k_hw_enable_interrupts(struct ath_hw *ah)
 	}
 	ath_dbg(common, INTERRUPT, "AR_IMR 0x%x IER 0x%x\n",
 		REG_READ(ah, AR_IMR), REG_READ(ah, AR_IER));
+}
+
+void ath9k_hw_resume_interrupts(struct ath_hw *ah)
+{
+	struct ath_common *common = ath9k_hw_common(ah);
+
+	if (!(ah->imask & ATH9K_INT_GLOBAL))
+		return;
+
+	if (atomic_read(&ah->intr_ref_cnt) != 0) {
+		ath_dbg(common, INTERRUPT, "Do not enable IER ref count %d\n",
+			atomic_read(&ah->intr_ref_cnt));
+		return;
+	}
+
+	__ath9k_hw_enable_interrupts(ah);
+}
+EXPORT_SYMBOL(ath9k_hw_resume_interrupts);
+
+void ath9k_hw_enable_interrupts(struct ath_hw *ah)
+{
+	struct ath_common *common = ath9k_hw_common(ah);
+
+	if (!(ah->imask & ATH9K_INT_GLOBAL))
+		return;
+
+	if (!atomic_inc_and_test(&ah->intr_ref_cnt)) {
+		ath_dbg(common, INTERRUPT, "Do not enable IER ref count %d\n",
+			atomic_read(&ah->intr_ref_cnt));
+		return;
+	}
+
+	__ath9k_hw_enable_interrupts(ah);
 }
 EXPORT_SYMBOL(ath9k_hw_enable_interrupts);
 
