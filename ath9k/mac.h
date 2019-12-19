@@ -42,20 +42,20 @@
 #define CCK_PREAMBLE_BITS   144
 #define CCK_PLCP_BITS        48
 
-/* #define OFDM_SIFS_TIME        16 */
-#define OFDM_SIFS_TIME        65536
+#define OFDM_SIFS_TIME        16
+/* #define OFDM_SIFS_TIME        65536 */
 #define OFDM_PREAMBLE_TIME    20
 #define OFDM_PLCP_BITS        22
 #define OFDM_SYMBOL_TIME      4
 
-/* #define OFDM_SIFS_TIME_HALF     32 */
-#define OFDM_SIFS_TIME_HALF     65536
+#define OFDM_SIFS_TIME_HALF     32
+/* #define OFDM_SIFS_TIME_HALF     65536 */
 #define OFDM_PREAMBLE_TIME_HALF 40
 #define OFDM_PLCP_BITS_HALF     22
 #define OFDM_SYMBOL_TIME_HALF   8
 
-/* #define OFDM_SIFS_TIME_QUARTER      64 */
-#define OFDM_SIFS_TIME_QUARTER      65536
+#define OFDM_SIFS_TIME_QUARTER      64
+/* #define OFDM_SIFS_TIME_QUARTER      65536 */
 #define OFDM_PREAMBLE_TIME_QUARTER  80
 #define OFDM_PLCP_BITS_QUARTER      22
 #define OFDM_SYMBOL_TIME_QUARTER    16
