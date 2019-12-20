@@ -1045,9 +1045,9 @@ void ath9k_hw_init_global_settings(struct ath_hw *ah)
 	tx_lat = 54;
 
 	if (IS_CHAN_5GHZ(chan))
-		sifstime = 16;
+		sifstime = OFDM_SIFS_TIME;
 	else
-		sifstime = 10;
+		sifstime = CCK_SIFS_TIME;
 
 	if (IS_CHAN_HALF_RATE(chan)) {
 		eifs = 175;
@@ -1056,7 +1056,7 @@ void ath9k_hw_init_global_settings(struct ath_hw *ah)
 		if (IS_CHAN_A_FAST_CLOCK(ah, chan))
 		    tx_lat += 11;
 
-		sifstime = 32;
+		sifstime = OFDM_SIFS_TIME_HALF;
 		ack_offset = 16;
 		slottime = 13;
 	} else if (IS_CHAN_QUARTER_RATE(chan)) {
@@ -1066,7 +1066,7 @@ void ath9k_hw_init_global_settings(struct ath_hw *ah)
 		if (IS_CHAN_A_FAST_CLOCK(ah, chan))
 		    tx_lat += 22;
 
-		sifstime = 64;
+		sifstime = OFDM_SIFS_TIME_QUARTER;
 		ack_offset = 32;
 		slottime = 21;
 	} else {
