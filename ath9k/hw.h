@@ -34,6 +34,9 @@
 
 #include "../regd.h"
 
+#define NET_PRJ_MAX(_aifs_sys, _aifs_prj) \
+    ((_aifs_sys > _aifs_prj) ? _aifs_sys : _aifs_prj)
+
 #define ATHEROS_VENDOR_ID	0x168c
 
 #define AR9300_DEVID_INVALID	0xabcd

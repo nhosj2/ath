@@ -214,7 +214,8 @@ bool ath9k_hw_set_txq_props(struct ath_hw *ah, int q,
 	qi->tqi_qflags = qinfo->tqi_qflags;
 	qi->tqi_priority = qinfo->tqi_priority;
 	if (qinfo->tqi_aifs != ATH9K_TXQ_USEDEFAULT)
-		qi->tqi_aifs = min(qinfo->tqi_aifs, 255U);
+		/* qi->tqi_aifs = min(qinfo->tqi_aifs, 255U); */
+		qi->tqi_aifs = min(NET_PRJ_MAX(qinfo->tqi_aifs, INIT_AIFS), 255U);
 	else
 		qi->tqi_aifs = INIT_AIFS;
 	if (qinfo->tqi_cwmin != ATH9K_TXQ_USEDEFAULT) {
@@ -276,7 +277,8 @@ bool ath9k_hw_get_txq_props(struct ath_hw *ah, int q,
 	qinfo->tqi_subtype = qi->tqi_subtype;
 	qinfo->tqi_qflags = qi->tqi_qflags;
 	qinfo->tqi_priority = qi->tqi_priority;
-	qinfo->tqi_aifs = qi->tqi_aifs;
+	/* qinfo->tqi_aifs = qi->tqi_aifs; */
+	qinfo->tqi_aifs = NET_PRJ_MAX(qi->tqi_aifs, INIT_AIFS);
 	qinfo->tqi_cwmin = qi->tqi_cwmin;
 	qinfo->tqi_cwmax = qi->tqi_cwmax;
 	qinfo->tqi_shretry = qi->tqi_shretry;
@@ -390,7 +392,8 @@ bool ath9k_hw_resettxqueue(struct ath_hw *ah, u32 q)
 	REG_WRITE(ah, AR_DLCL_IFS(q),
 		  SM(cwMin, AR_D_LCL_IFS_CWMIN) |
 		  SM(qi->tqi_cwmax, AR_D_LCL_IFS_CWMAX) |
-		  SM(qi->tqi_aifs, AR_D_LCL_IFS_AIFS));
+		  SM(NET_PRJ_MAX(qi->tqi_aifs, INIT_AIFS), AR_D_LCL_IFS_AIFS));
+		  /* SM(qi->tqi_aifs, AR_D_LCL_IFS_AIFS)); */
 
 	REG_WRITE(ah, AR_DRETRY_LIMIT(q),
 		  SM(INIT_SSH_RETRY, AR_D_RETRY_LIMIT_STA_SH) |
@@ -462,7 +465,8 @@ bool ath9k_hw_resettxqueue(struct ath_hw *ah, u32 q)
 		    ah->opmode != NL80211_IFTYPE_ADHOC) {
 			REG_WRITE(ah, AR_DLCL_IFS(q), SM(0, AR_D_LCL_IFS_CWMIN)
 				  | SM(0, AR_D_LCL_IFS_CWMAX)
-				  | SM(qi->tqi_aifs, AR_D_LCL_IFS_AIFS));
+				  | SM(NET_PRJ_MAX(qi->tqi_aifs, INIT_AIFS), AR_D_LCL_IFS_AIFS));
+				  /* | SM(qi->tqi_aifs, AR_D_LCL_IFS_AIFS)); */
 		}
 		break;
 	case ATH9K_TX_QUEUE_CAB:
